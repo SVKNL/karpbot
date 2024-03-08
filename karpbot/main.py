@@ -13,6 +13,9 @@ from services.calendar import Work_calendar
 import os
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timedelta
+from apscheduler.triggers.combining import AndTrigger
+from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 config: Config = load_config()
 BOT_TOKEN: str = config.tg_bot.token
 
@@ -247,8 +250,8 @@ def tick():
 
 async def shedule():
     scheduler = AsyncIOScheduler()
-    alarm_time=datetime.now() - timedelta(hours=2)
-    scheduler.add_job(job, 'date', run_date=alarm_time, args=[datetime.now()])
+    trigger = CronTrigger(hour=20)
+    scheduler.add_job(job, trigger)
     scheduler.start()
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
     while True:
