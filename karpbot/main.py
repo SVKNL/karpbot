@@ -203,10 +203,19 @@ async def job():
     cursor = connection.cursor()
     cursor.execute(' SELECT chat_id FROM shedules')
     schedules_info=cursor.fetchall()
+    print(schedules_info)
     for i in schedules_info:
         cursor.execute(' SELECT * FROM shedules WHERE chat_id = (?)', (i))
         res=cursor.fetchall()
-        cursor.execute('SELECT date, time FROM extras WHERE user_id = (?)', (res[0][1]))
+        #y=res[0][1]
+        #x=(res,)
+        #print(x)
+        cursor.execute('SELECT date, time FROM extras WHERE chat_id = (?)', ((res[0][1],)))
+        extras_list=cursor.fetchall()
+        extras={}
+        for j in extras_list:
+            extras[j[0]]=j[1]
+        print(extras)
         user_id=res[0][1]
         shedule=res[0][2]
         time1=res[0][3]
@@ -216,8 +225,8 @@ async def job():
         present_day = datetime.today()
         tomorrow = present_day + timedelta(1)
         tomorrow_day=tomorrow.strftime('%d.%m.%Y')
-        kid=Work_calendar(user_id,shedule,[],time1,time2,start_date)
-        answer=kid.do_work(tomorrow_day)
+        kid=Work_calendar(user_id,shedule,extras,time1,time2,start_date)
+        answer=kid.do_work('13.04.2024')
         await bot.send_message(chat_id=i[0], text=answer)
     
 
@@ -238,7 +247,7 @@ def tick():
 
 async def shedule():
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(job, 'interval', seconds=200)
+    scheduler.add_job(job, 'interval', seconds=2)
     scheduler.start()
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
     while True:

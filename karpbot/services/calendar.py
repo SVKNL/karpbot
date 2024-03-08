@@ -9,7 +9,7 @@ class Work_calendar:
     prod_cal = requests.get(link).json()['days']
     shedules = ['common', 'double_day', 'double_day_night', 'double_night', 'triple', 'common_even']
     
-    def __init__(self, user_id: int, shedule: str, extras: list, time1, time2, start_date):
+    def __init__(self, user_id: int, shedule: str, extras: dict, time1, time2, start_date):
         self.user_id = user_id
         self.shedule = shedule
         self.extras = extras
@@ -27,9 +27,9 @@ class Work_calendar:
                 holiday = True
             else:
                 holiday = False
-            for i in self.extras:
-                if i['date'] == my_date:
-                    holiday = False
+            
+            if my_date in self.extras:
+                return self.extras[my_date]
             if holiday == True:
                 return 'free'
             else:
