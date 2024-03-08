@@ -30,13 +30,13 @@ class FSMFillForm(StatesGroup):
     # Создаем экземпляры класса State, последовательно
     # перечисляя возможные состояния, в которых будет находиться
     # бот в разные моменты взаимодейтсвия с пользователем
-    fill_shedule = State()        # Состояние ожидания ввода имени
-    fill_time1 = State()         # Состояние ожидания ввода возраста
-    fill_time2 = State()      # Состояние ожидания выбора пола
-    fill_start_date = State()   # Состояние ожидания выбора образования
-    fill_extras_date = State()
+    fill_shedule = State()        # пулл состояний для созданния расписания
+    fill_time1 = State()         
+    fill_time2 = State()      
+    fill_start_date = State()   
+    fill_extras_date = State()      # пулл состояний для добавления раб дней вне расписания
     fill_extras_time = State()
-    fill_announcements = State()   # Состояние ожидания выбора получать ли 
+    fill_announcements = State()   # Состояние для получения уведомлений
 
 
 # Этот хэндлер будет срабатывать на команду /start вне состояний
@@ -147,16 +147,66 @@ async def process_start_date_press(message: Message, state: FSMContext):
     connection.commit()
     connection.close()
    
+# перевод в режим добавления нового расписания
+@dp.message(Command(commands='fillextras'), StateFilter(default_state))
+async def process_start_extras_command(message: Message, state: FSMContext):
+    await message.answer(text='enter extras')
+    # Устанавливаем состояние ожидания ввода типа расписания
+    await state.set_state(FSMFillForm.fill_extras_date)
+
+
+# ввод типа расписания, ДОДЕЛАТЬ КНОПКИ ВЫБОРА
+
+@dp.message(StateFilter(FSMFillForm.fill_extras_date))
+async def process_extras_date_sent(message: Message, state: FSMContext):
+    # сохраняем тип расписания
+    await state.update_data(extras_date=message.text)
+    await message.answer(text='date saved, enter time')
+    # Устанавливаем состояние ожидания ввода времени1
+    await state.set_state(FSMFillForm.fill_extras_time)
+
+
+# выбор времени1
+@dp.message(StateFilter(FSMFillForm.fill_extras_time))
+async def process_extras_time_sent(message: Message, state: FSMContext):
+    # Cохраняем возраст в хранилище по ключу "month"
+    await state.update_data(extras_time=message.text)
+    
+    await message.answer(
+        text='time saved',
+        )
+   
+    user_dict[message.from_user.id] = await state.get_data()
+    connection = sqlite3.connect('shedules.db')
+    cursor = connection.cursor()
+    cursor.execute(''' CREATE TABLE IF NOT EXISTS extras(
+        id INTEGER PRIMARY KEY,
+        user_id ,
+        date ,
+        time ,
+        chat_id  )''')
+    cursor.execute('''INSERT INTO extras (user_id, date, time, chat_id) VALUES (?,?,?,?)''', (
+        message.from_user.id,
+        user_dict[message.from_user.id]['extras_date'], user_dict[message.from_user.id]['extras_time'],
+        message.chat.id))
+    cursor.execute(' SELECT * FROM extras ')
+    users = cursor.fetchall()
+    for user in users:
+        print(user)
+    connection.commit()
+    connection.close()
+
+
+
 async def job():
     connection = sqlite3.connect('shedules.db')
     cursor = connection.cursor()
     cursor.execute(' SELECT chat_id FROM shedules')
-    result=cursor.fetchall()
-    print(result)
-    for i in result:
+    schedules_info=cursor.fetchall()
+    for i in schedules_info:
         cursor.execute(' SELECT * FROM shedules WHERE chat_id = (?)', (i))
         res=cursor.fetchall()
-        print(res)
+        cursor.execute('SELECT date, time FROM extras WHERE user_id = (?)', (res[0][1]))
         user_id=res[0][1]
         shedule=res[0][2]
         time1=res[0][3]
@@ -185,20 +235,42 @@ async def send_echo(message: Message):
 def tick():
     print('Tick! The time is: %s' % datetime.now())
 
-async def main():
+
+async def shedule():
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(job, 'interval', seconds=5)
+    scheduler.add_job(job, 'interval', seconds=200)
     scheduler.start()
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
     while True:
+        
         await asyncio.sleep(1000)
+
+
+
+
+    
+    
+    
+    
+        
 
 if __name__ == '__main__':
     # Execution will block here until Ctrl+C (Ctrl+Break on Windows) is pressed.
+    loop = asyncio.get_event_loop()
     try:
-        asyncio.run(main())
+        
+        loop.create_task(dp.start_polling(bot))
+        loop.create_task(shedule())
+        loop.run_forever()
     except (KeyboardInterrupt, SystemExit):
-        pass        
+        pass
+    finally:    
+        pending = asyncio.all_tasks(loop=loop)
+        for task in pending:
+            task.cancel()
+    
+    loop.stop()
+    loop.close()           
 
 
 
@@ -211,5 +283,7 @@ if __name__ == '__main__':
 
 
 
-# Запускаем поллинг
-dp.run_polling(bot)
+
+
+
+

@@ -34,9 +34,9 @@ class Work_calendar:
                 return 'free'
             else:
                 if int(my_date[0:2]) % 2 == 0:
-                    return self.time1
-                else:
                     return self.time2
+                else:
+                    return self.time1
         else:
             return 'lol'            
 
