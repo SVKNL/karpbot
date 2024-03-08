@@ -247,7 +247,8 @@ def tick():
 
 async def shedule():
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(job, 'interval', seconds=2)
+    alarm_time=datetime.now() - timedelta(hours=2)
+    scheduler.add_job(job, 'date', run_date=alarm_time, args=[datetime.now()])
     scheduler.start()
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
     while True:
