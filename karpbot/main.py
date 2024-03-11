@@ -5,8 +5,9 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message, PhotoSize)
+from aiogram.types import CallbackQuery, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, Message, PhotoSize
+from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback, DialogCalendar, DialogCalendarCallback, \
+    get_user_locale
 from config_data.config import Config, load_config
 import sqlite3
 from services.calendar import Work_calendar
@@ -16,12 +17,21 @@ from datetime import datetime, timedelta
 from apscheduler.triggers.combining import AndTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
+from aiogram.utils.markdown import hbold
+from aiogram.filters.callback_data import CallbackData
 config: Config = load_config()
 BOT_TOKEN: str = config.tg_bot.token
 
 # Создаем объекты бота и диспетчера
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
+
+
+
+
+
+
+
 
 # Создаем "базу данных" пользователей
 user_dict: dict[int, dict[str, str | int | bool]] = {}
@@ -50,6 +60,7 @@ async def process_start_command(message: Message):
         text='Это бот-календарь для барсука\n\n'
              'Чтобы внести дежурства введи /fillform'
     )
+    
 
 
 # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии
@@ -152,19 +163,34 @@ async def process_start_date_press(message: Message, state: FSMContext):
    
 # перевод в режим добавления нового расписания
 @dp.message(Command(commands='fillextras'), StateFilter(default_state))
-async def process_start_extras_command(message: Message, state: FSMContext):
-    await message.answer(text='enter extras')
-    # Устанавливаем состояние ожидания ввода типа расписания
+async def process_start_extras_command(message: Message, state: FSMContext,):
+    
+   
+    await message.answer(
+        "Please select a date: ",
+        reply_markup=await SimpleCalendar(locale=await get_user_locale(message.from_user)).start_calendar()
+    )
     await state.set_state(FSMFillForm.fill_extras_date)
+    
 
 
 # ввод типа расписания, ДОДЕЛАТЬ КНОПКИ ВЫБОРА
 
-@dp.message(StateFilter(FSMFillForm.fill_extras_date))
-async def process_extras_date_sent(message: Message, state: FSMContext):
+@dp.callback_query(StateFilter(FSMFillForm.fill_extras_date))
+async def process_extras_date_sent(callback: CallbackQuery, state: FSMContext):
     # сохраняем тип расписания
-    await state.update_data(extras_date=message.text)
-    await message.answer(text='date saved, enter time')
+    raw_list = callback.data.split(':')
+    if len(raw_list[3]) == 1:
+        raw_list[3] = '0'+raw_list[3]
+    if len(raw_list[4]) == 1:
+        raw_list[3] = '0'+raw_list[3]
+    formatted_date = raw_list[4] + '.' + raw_list[3] + '.' + raw_list[2]    
+    await state.update_data(extras_date=formatted_date)
+    await callback.message.delete()
+    await callback.message.answer(
+        text='Спасибо! А теперь enter time '
+             
+    )
     # Устанавливаем состояние ожидания ввода времени1
     await state.set_state(FSMFillForm.fill_extras_time)
 
@@ -250,7 +276,8 @@ def tick():
 
 async def shedule():
     scheduler = AsyncIOScheduler()
-    trigger = CronTrigger(hour=20)
+    # moscow -3
+    trigger = CronTrigger(hour=12)
     scheduler.add_job(job, trigger)
     scheduler.start()
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
