@@ -190,7 +190,7 @@ async def process_start_extras_command(message: Message, state: FSMContext,):
    
     await message.answer(
         "Please select a date: ",
-        reply_markup=await SimpleCalendar(locale=await get_user_locale(message.from_user)).start_calendar()
+        reply_markup=await SimpleCalendar().start_calendar()
     )
     await state.set_state(FSMFillForm.fill_extras_date)
     
@@ -299,7 +299,7 @@ def tick():
 async def shedule():
     scheduler = AsyncIOScheduler()
     # moscow -3
-    trigger = CronTrigger(hour=12)
+    trigger = CronTrigger(hour=19)
     scheduler.add_job(job, trigger)
     scheduler.start()
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
