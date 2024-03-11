@@ -90,16 +90,38 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
 async def process_start_shedule_command(message: Message, state: FSMContext):
     await message.answer(text='enter shedule')
     # Устанавливаем состояние ожидания ввода типа расписания
+    # Создаем объекты инлайн-кнопок
+    common_button = InlineKeyboardButton(
+        text='5/2 с началом в одно время',
+        callback_data='common'
+    )
+    common_even_button = InlineKeyboardButton(
+        text='5/2 с разными сменами',
+        callback_data='common_even'
+    )
+    
+    # Добавляем кнопки в клавиатуру (две в одном ряду и одну в другом)
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [common_button, common_even_button],
+        
+    ]
+    # Создаем объект инлайн-клавиатуры
+    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+    # Отправляем пользователю сообщение с клавиатурой
+    await message.answer(
+        text='Выберитие ваш график',
+        reply_markup=markup
+    )
     await state.set_state(FSMFillForm.fill_shedule)
 
 
 # ввод типа расписания, ДОДЕЛАТЬ КНОПКИ ВЫБОРА
 
-@dp.message(StateFilter(FSMFillForm.fill_shedule))
-async def process_shedule_sent(message: Message, state: FSMContext):
+@dp.callback_query(StateFilter(FSMFillForm.fill_shedule))
+async def process_shedule_sent(callback: CallbackQuery, state: FSMContext):
     # сохраняем тип расписания
-    await state.update_data(shedule=message.text)
-    await message.answer(text='Тип записан')
+    await state.update_data(shedule=callback.data)
+    await callback.message.answer(text='Тип записан, введите первое время начала')
     # Устанавливаем состояние ожидания ввода времени1
     await state.set_state(FSMFillForm.fill_time1)
 
@@ -111,7 +133,7 @@ async def process_time1_sent(message: Message, state: FSMContext):
     await state.update_data(time1=message.text)
     
     await message.answer(
-        text='Спасибо!\n\nУкажите время',
+        text='Спасибо!\n\nУкажите второе время начала',
         )
    
     await state.set_state(FSMFillForm.fill_time2)
@@ -122,7 +144,7 @@ async def process_time2_sent(message: Message, state: FSMContext):
     await state.update_data(time2=message.text)
     
     await message.answer(
-        text='Спасибо!\n\nУкажите время',
+        text='Спасибо!\n\nУкажите с какого дня построить расписание',
         )
    
     await state.set_state(FSMFillForm.fill_start_date)
@@ -135,7 +157,7 @@ async def process_start_date_press(message: Message, state: FSMContext):
     # по ключу "gender"
     await state.update_data(start_date=message.text)
     await message.answer(
-        text='added work'
+        text='расписание добавлено, уведомления на следующий день включены'
     )
   
     user_dict[message.from_user.id] = await state.get_data()
@@ -255,7 +277,7 @@ async def job():
         tomorrow = present_day + timedelta(1)
         tomorrow_day=tomorrow.strftime('%d.%m.%Y')
         kid=Work_calendar(user_id,shedule,extras,time1,time2,start_date)
-        answer=kid.do_work('13.04.2024')
+        answer=kid.do_work(tomorrow_day)
         await bot.send_message(chat_id=i[0], text=answer)
     
 
