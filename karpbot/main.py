@@ -248,8 +248,8 @@ async def process_extras_time_sent(message: Message, state: FSMContext):
     connection.close()
 
 
-async def job_responce(schedules_info):
-    for i in schedules_info:
+async def job_responce(i):
+    
         connection = sqlite3.connect('shedules.db')
         cursor = connection.cursor()
         cursor.execute(' SELECT * FROM shedules WHERE chat_id = (?)', (i))
@@ -281,7 +281,7 @@ async def job():
     connection = sqlite3.connect('shedules.db')
     cursor = connection.cursor()
     cursor.execute(' SELECT chat_id FROM shedules')
-    schedules_info=cursor.fetchall()
+    schedules_info = cursor.fetchall()
     print(schedules_info)
     tasks = [job_responce(i) for i in schedules_info]
     await asyncio.gather(*tasks)
@@ -306,8 +306,8 @@ def tick():
 async def shedule():
     scheduler = AsyncIOScheduler()
     # moscow -3
-    trigger = CronTrigger(hour=19)
-    scheduler.add_job(job, trigger)
+    #trigger = CronTrigger(hour=19)
+    scheduler.add_job(job, 'interval', seconds=5)
     scheduler.start()
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
     while True:
