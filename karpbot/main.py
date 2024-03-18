@@ -248,14 +248,10 @@ async def process_extras_time_sent(message: Message, state: FSMContext):
     connection.close()
 
 
-
-async def job():
-    connection = sqlite3.connect('shedules.db')
-    cursor = connection.cursor()
-    cursor.execute(' SELECT chat_id FROM shedules')
-    schedules_info=cursor.fetchall()
-    print(schedules_info)
+async def job_responce(schedules_info):
     for i in schedules_info:
+        connection = sqlite3.connect('shedules.db')
+        cursor = connection.cursor()
         cursor.execute(' SELECT * FROM shedules WHERE chat_id = (?)', (i))
         res=cursor.fetchall()
         #y=res[0][1]
@@ -279,6 +275,17 @@ async def job():
         kid=Work_calendar(user_id,shedule,extras,time1,time2,start_date)
         answer=kid.do_work(tomorrow_day)
         await bot.send_message(chat_id=i[0], text=answer)
+
+
+async def job():
+    connection = sqlite3.connect('shedules.db')
+    cursor = connection.cursor()
+    cursor.execute(' SELECT chat_id FROM shedules')
+    schedules_info=cursor.fetchall()
+    print(schedules_info)
+    tasks = [job_responce(i) for i in schedules_info]
+    await asyncio.gather(*tasks)
+    
     
 
 
